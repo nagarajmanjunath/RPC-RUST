@@ -9,7 +9,7 @@ use http::{hyper};
 pub trait HttpMetaExtractor: Send + Sync + 'static {
 	/// Type of Metadata
 	type Metadata: jsonrpc_core::Metadata;
-	
+
 	/// Extracts metadata from given params.
 	fn read_metadata(&self, origin: Option<String>, user_agent: Option<String>) -> Self::Metadata;
 }
