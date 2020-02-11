@@ -1,16 +1,13 @@
-use crate::rpc_apis::{self, Api, ApiSet};
-use crate::rpc_service::{self as rpc, start_http};
-use crate::v1::extractors;
-use extractors::{RpcExtractor};
-use jsonrpc_core::{Compatibility, MetaIoHandler};
-pub use jsonrpc_http_server::{DomainsValidation, Server};
-use std::collections::HashSet;
 use std::io;
-use std::net::SocketAddr;
 use std::sync::Arc;
+use std::path::PathBuf;
+use std::collections::HashSet;
+use jsonrpc_core::{Compatibility, MetaIoHandler};
+use httpserver::{self as rpc, DomainsValidation};
+pub use httpserver::{HttpServer};
+use crate::rpc_apis::{self, Api, ApiSet};
 
-/// RPC HTTP Server instance
-pub type HttpServer = http::Server;
+
 pub const DAPPS_DOMAIN: &'static str = "web3.site";
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,7 +19,7 @@ pub struct HttpConfiguration {
 	/// The network port (default is 8545).
 	pub port: u16,
 	/// The categories of RPC calls enabled.
-	pub apis: ApiSet,
+    pub apis: ApiSet,
 	/// CORS headers
 	pub cors: Option<Vec<String>>,
 	/// Specify a list of valid hosts we accept requests from.
@@ -60,29 +57,26 @@ pub fn new_http(
 	if !conf.enabled {
 		return Ok(None);
 	}
+
 	let domain = DAPPS_DOMAIN;
 	let url = format!("{}:{}", conf.interface, conf.port);
-	let addr = url
-		.parse()
-		.map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
-	let handler = rpc_apis::setup_rpc(
-		MetaIoHandler::with_compatibility(Compatibility::Both),
-		conf.apis,
-	);
+	let addr = url.parse().map_err(|_| format!("Invalid {} listen host/port given: {}", id, url))?;
+	let handler = setup_rpc_server(conf.apis);
 
 	let cors_domains = into_domains(conf.cors);
 	let allowed_hosts = into_domains(with_domain(conf.hosts, domain, &Some(url.clone().into())));
 
-	let start_result = start_http(
+	let start_result = rpc::start_http(
 		&addr,
 		cors_domains,
 		allowed_hosts,
-		handler,
-		RpcExtractor,
+        handler,
+		rpc::RpcExtractor,
 		conf.server_threads,
 		conf.max_payload,
 		conf.keep_alive,
 	);
+
 	match start_result {
 		Ok(server) => Ok(Some(server)),
 		Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => Err(
@@ -92,21 +86,19 @@ pub fn new_http(
 	}
 }
 
+
+
+
 fn setup_rpc_server(apis: ApiSet) -> MetaIoHandler<()> {
 	rpc_apis::setup_rpc(MetaIoHandler::with_compatibility(Compatibility::Both), apis)
 }
 
+
 fn into_domains<T: From<String>>(items: Option<Vec<String>>) -> DomainsValidation<T> {
-	items
-		.map(|vals| vals.into_iter().map(T::from).collect())
-		.into()
+	items.map(|vals| vals.into_iter().map(T::from).collect()).into()
 }
 
-fn with_domain(
-	items: Option<Vec<String>>,
-	domain: &str,
-	dapps_address: &Option<rpc::Host>,
-) -> Option<Vec<String>> {
+fn with_domain(items: Option<Vec<String>>, domain: &str, dapps_address: &Option<rpc::Host>) -> Option<Vec<String>> {
 	fn extract_port(s: &str) -> Option<u16> {
 		s.split(':').nth(1).and_then(|s| s.parse().ok())
 	}
@@ -130,47 +122,3 @@ fn with_domain(
 		items.into_iter().collect()
 	})
 }
-
-// impl HttpConfiguration {
-// 	pub fn with_port(port: u16) -> Self {
-// 		HttpConfiguration {
-// 			enabled: true,
-// 			interface: "127.0.0.1".into(),
-// 			port: port,
-// 			apis: ApiSet::default(),
-// 			cors: None,
-// 			hosts: Some(Vec::new()),
-// 		}
-// 	}
-// }
-
-// pub fn new_http(conf: HttpConfiguration) -> Result<Option<Server>, String> {
-// 	if !conf.enabled {
-// 		return Ok(None);
-// 	}
-// 	let url = format!("{}:{}", conf.interface, conf.port);
-// 	let addr = (url
-// 		.parse()
-// 		.map_err(|_| format!("Invalid JSONRPC listen host/port given: {}", url))?);
-// 	println!("print the api {:?}", conf.apis);
-// 	Ok(Some(
-// 		(setup_http_rpc_server(&addr, conf.cors, conf.hosts, conf.apis))?,
-// 	))
-// }
-
-// pub fn setup_http_rpc_server(
-// 	url: &SocketAddr,
-// 	cors_domains: Option<Vec<String>>,
-// 	allowed_hosts: Option<Vec<String>>,
-// 	apis: ApiSet,
-// ) -> Result<Server, String> {
-// 	let server = setup_rpc_server(apis);
-// 	let start_result = start_http(url, cors_domains, allowed_hosts, server);
-// 	match start_result {
-// 		Err(ref err) if err.kind() == io::ErrorKind::AddrInUse => {
-// 			Err(format!("RPC address {} is already in use, make sure that another instance of a Bitcoin node is not running or change the address using the --jsonrpc-port and --jsonrpc-interface options.", url))
-// 		},
-// 		Err(e) => Err(format!("RPC error: {:?}", e)),
-// 		Ok(server) => Ok(server),
-// 	}
-// }

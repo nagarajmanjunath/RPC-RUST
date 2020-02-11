@@ -31,13 +31,5 @@ impl TransactionRPC for TransactionRPCImpl {
         //  Ok(U256::zero())
 	}
 
-	// fn send_transaction(&self, request: TransactionRequest) -> Result<H256> {
-	// 	// let trx_count = H256::zero();
-	// 	// let result = Ok(trx_count);
-	// 	// Box::new(future::done(result))
-	// 	// Some(H256::zero());
-    //     // return Err()
-    //     Ok(H256::zero())
 
-	// }
 }

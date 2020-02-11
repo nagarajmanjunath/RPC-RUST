@@ -20,7 +20,6 @@ use std::fmt;
 
 use jsonrpc_core::{futures, Result as RpcResult, Error, ErrorCode, Value};
 
-
 mod codes {
 	// NOTE [ToDr] Codes from [-32099, -32000]
 	pub const UNSUPPORTED_REQUEST: i64 = -32000;

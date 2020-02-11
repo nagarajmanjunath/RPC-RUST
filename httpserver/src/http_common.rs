@@ -4,12 +4,10 @@ use jsonrpc_core;
 use http;
 use http::{hyper};
 
-
 /// HTTP RPC server impl-independent metadata extractor
 pub trait HttpMetaExtractor: Send + Sync + 'static {
 	/// Type of Metadata
 	type Metadata: jsonrpc_core::Metadata;
-
 	/// Extracts metadata from given params.
 	fn read_metadata(&self, origin: Option<String>, user_agent: Option<String>) -> Self::Metadata;
 }

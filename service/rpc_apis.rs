@@ -1,4 +1,4 @@
-use crate::v1;
+use httpserver::v1;
 pub use jsonrpc_core::{Compatibility, Error, MetaIoHandler};
 use std::collections::HashSet;
 use std::str::FromStr;
